@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "amqplib": "^0.10.4",
+    "axios": "^1.7.2",
+    "express": "^4.19.2",
+    "luxon": "^3.4.4",
+    "mongoose": "^8.5.0"
+  }
+}
