@@ -1,6 +1,4 @@
-// state_api.js
 const express = require('express');
-const mongoose = require('mongoose');
 const amqp = require('amqplib/callback_api');
 
 const app = express();
@@ -8,41 +6,45 @@ app.use(express.json());
 
 const RABBITMQ_URL = 'amqp://state:state@localhost';
 const QUEUE_STATE = 'state_queue';
-const uri = 'mongodb+srv://ader0514:Ader0514@cluster0.wr9uiud.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
-// Conectar a MongoDB
-mongoose.connect(uri);
 
-const documentoSchema = new mongoose.Schema({
-    Nombre: String,
-    NombreU: String,
-    Estado: String,
-});
-
-const Documento = mongoose.model('Documento', documentoSchema);
+// Almacenamiento en memoria para los documentos
+const documentos = new Map();
 
 // Conectar y consumir mensajes de state_queue
 amqp.connect(RABBITMQ_URL, (err, conn) => {
+    if (err) {
+        console.error('Error connecting to RabbitMQ', err);
+        process.exit(1);
+    }
+
     conn.createChannel((err, ch) => {
+        if (err) {
+            console.error('Error creating channel', err);
+            process.exit(1);
+        }
+
         ch.assertQueue(QUEUE_STATE, { durable: false });
-        ch.consume(QUEUE_STATE, async (msg) => {
+        ch.consume(QUEUE_STATE, (msg) => {
             const { Nombre, NombreU, Estado } = JSON.parse(msg.content.toString());
             
             if (Estado) {
                 // Actualizar estado del documento
-                await Documento.findOneAndUpdate({ Nombre }, { Estado });
+                documentos.set(Nombre, { Nombre, NombreU, Estado });
+                console.log(`Estado del documento '${Nombre}' actualizado a '${Estado}'`);
             } else {
                 // Crear documento en revisión
-                const documento = new Documento({ Nombre, NombreU, Estado: 'en revisión' });
-                await documento.save();
+                documentos.set(Nombre, { Nombre, NombreU, Estado: 'en revisión' });
+                console.log(`Documento '${Nombre}' recibido y creado en estado 'en revisión'`);
             }
         }, { noAck: true });
     });
 });
 
 // Endpoint para obtener el estado de un documento
-app.get('/status/:Nombre', async (req, res) => {
+app.get('/status/:Nombre', (req, res) => {
     const { Nombre } = req.params;
-    const documento = await Documento.findOne({ Nombre });
+    const documento = documentos.get(Nombre);
+
     if (documento) {
         res.json({ Nombre: documento.Nombre, NombreU: documento.NombreU, Estado: documento.Estado });
     } else {
@@ -50,6 +52,7 @@ app.get('/status/:Nombre', async (req, res) => {
     }
 });
 
-app.listen(3002, () => {
-    console.log('state_api escuchando en el puerto 3002');
+const PORT = 3002;
+app.listen(PORT, () => {
+    console.log(`state_api escuchando en el puerto ${PORT}`);
 });

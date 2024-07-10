@@ -5,7 +5,7 @@ const amqp = require('amqplib/callback_api');
 const app = express();
 app.use(express.json());
 
-const RABBITMQ_URL = 'amqp://receptor:receptor@localhost';
+const RABBITMQ_URL = 'amqp://localhost';
 const QUEUE_SEND = 'send_queue';
 const QUEUE_STATE = 'state_queue';
 
@@ -16,6 +16,9 @@ amqp.connect(RABBITMQ_URL, (err, conn) => {
         ch.consume(QUEUE_SEND, (msg) => {
             const { Nombre, NombreU } = JSON.parse(msg.content.toString());
             const estado = 'en revisión';
+
+            // Mostrar mensaje en consola
+            console.log(`Documento recibido: Nombre=${Nombre}, NombreU=${NombreU}`);
 
             // Enviar a state_queue
             ch.assertQueue(QUEUE_STATE, { durable: false });
