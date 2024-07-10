@@ -40,4 +40,5 @@ permisos: set permission
 
 Sigue estos pasos para configurar y ejecutar el proyecto en tu máquina local:
 
-
+## Diagrama
+https://github.com/Ayrton091/DocumentosCaso/issues/1#issue-2399602273
